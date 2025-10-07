@@ -14,7 +14,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/Button';
-import { useAuth } from '@/hooks/useAuth';
+import { useAuthContext } from '@/context/AuthContext';
 
 interface AuthFormProps {
   mode: 'login' | 'register';
@@ -27,7 +27,8 @@ interface AuthFormProps {
 interface AuthFormData {
   email: string;
   password: string;
-  name?: string;
+  firstName?: string;
+  lastName?: string;
   role?: 'student' | 'teacher';
 }
 
@@ -39,14 +40,15 @@ export const AuthForm: React.FC<AuthFormProps> = ({
   className
 }) => {
   const router = useRouter();
-  const { login, register, isLoading: authLoading } = useAuth();
+  const { login, register, isLoading: authLoading } = useAuthContext();
   const [step, setStep] = useState<'role' | 'form'>('role');
   const [selectedRole, setSelectedRole] = useState<'student' | 'teacher' | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState<AuthFormData>({
     email: '',
     password: '',
-    name: '',
+    firstName: '',
+    lastName: '',
     role: undefined
   });
   const [isLoading, setIsLoading] = useState(false);
@@ -76,20 +78,34 @@ export const AuthForm: React.FC<AuthFormProps> = ({
         const result = await login(formData.email, formData.password);
         if (result.success) {
           setSuccess('Login successful! Redirecting...');
-          setTimeout(() => router.push('/'), 1000);
+          // Refresh the router to pick up new cookies and redirect
+          router.refresh();
+          setTimeout(() => {
+            router.push('/');
+          }, 500);
         } else {
           setError(result.error || 'Login failed');
         }
       } else {
+        if (!formData.firstName || !formData.lastName) {
+          setError('First name and last name are required');
+          return;
+        }
+        
         const result = await register(
           formData.email, 
           formData.password, 
-          formData.name || '', 
+          formData.firstName, 
+          formData.lastName, 
           formData.role || 'student'
         );
         if (result.success) {
           setSuccess('Registration successful! Redirecting...');
-          setTimeout(() => router.push('/'), 1000);
+          // Refresh the router to pick up new cookies and redirect
+          router.refresh();
+          setTimeout(() => {
+            router.push('/');
+          }, 500);
         } else {
           setError(result.error || 'Registration failed');
         }
@@ -325,28 +341,51 @@ export const AuthForm: React.FC<AuthFormProps> = ({
               )}
 
               <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Name field for register */}
+                {/* Name fields for register */}
                 {mode === 'register' && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: 0.1 }}
-                  >
-                    <label className="block text-sm font-medium text-slate-300 mb-2">
-                      Full Name
-                    </label>
-                    <div className="relative">
-                      <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
-                      <input
-                        type="text"
-                        value={formData.name}
-                        onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                        className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
-                        placeholder="Enter your full name"
-                        required
-                      />
-                    </div>
-                  </motion.div>
+                  <>
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.1 }}
+                    >
+                      <label className="block text-sm font-medium text-slate-300 mb-2">
+                        First Name
+                      </label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                        <input
+                          type="text"
+                          value={formData.firstName}
+                          onChange={(e) => setFormData(prev => ({ ...prev, firstName: e.target.value }))}
+                          className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                          placeholder="Enter your first name"
+                          required
+                        />
+                      </div>
+                    </motion.div>
+
+                    <motion.div
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: 0.15 }}
+                    >
+                      <label className="block text-sm font-medium text-slate-300 mb-2">
+                        Last Name
+                      </label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-400" />
+                        <input
+                          type="text"
+                          value={formData.lastName}
+                          onChange={(e) => setFormData(prev => ({ ...prev, lastName: e.target.value }))}
+                          className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-600 rounded-lg text-white placeholder-slate-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                          placeholder="Enter your last name"
+                          required
+                        />
+                      </div>
+                    </motion.div>
+                  </>
                 )}
 
                 {/* Email field */}
@@ -375,7 +414,7 @@ export const AuthForm: React.FC<AuthFormProps> = ({
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: mode === 'register' ? 0.3 : 0.2 }}
+                  transition={{ delay: mode === 'register' ? 0.25 : 0.2 }}
                 >
                   <label className="block text-sm font-medium text-slate-300 mb-2">
                     Password

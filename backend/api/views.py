@@ -1,46 +1,113 @@
 
-from rest_framework import viewsets, permissions, generics, status
+from rest_framework import viewsets, permissions, generics, status, serializers
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from knox.models import AuthToken
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+from rest_framework_simplejwt.views import TokenObtainPairView
+from django.contrib.auth import authenticate
 from django.db.models import Count, Avg, Q
 from django.utils import timezone
 from .serializers import (
-    UserSerializer, RegisterSerializer, LoginSerializer, CourseSerializer,
+    UserSerializer, RegisterSerializer, LoginSerializer, LogoutSerializer, CourseSerializer,
     ChapterSerializer, QuizSerializer, QuestionSerializer, StudentProgressSerializer,
     CourseRatingSerializer, QuizAttemptSerializer
 )
 from .models import User, Course, Chapter, Quiz, Question, StudentProgress, CourseRating, QuizAttempt
+
+# Custom login serializer that includes user data
+
+
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    username_field = 'email'
+    
+    def validate(self, attrs):
+        # Get email and password from attrs
+        email = attrs.get('email')
+        password = attrs.get('password')
+        
+        # Authenticate user
+        user = authenticate(email=email, password=password)
+        
+        if user is None or not user.is_active:
+            raise serializers.ValidationError(
+                {'error': 'Invalid credentials'},
+                code='authorization'
+            )
+        
+        # Generate tokens using parent class method
+        refresh = self.get_token(user)
+        
+        data = {
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+            'user': user
+        }
+        
+        return data
+    
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        # Add custom claims if needed
+        token['email'] = user.email
+        token['role'] = user.role
+        return token
 
 # Register API
 
 
 class RegisterAPI(generics.GenericAPIView):
     serializer_class = RegisterSerializer
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+
+        # Create JWT tokens for the newly registered user
+        refresh = RefreshToken.for_user(user)
+
         return Response({
             "user": UserSerializer(user, context=self.get_serializer_context()).data,
-            "token": AuthToken.objects.create(user)[1]
-        })
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+        }, status=status.HTTP_201_CREATED)
 
 # Login API
 
 
 class LoginAPI(generics.GenericAPIView):
     serializer_class = LoginSerializer
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data
-        return Response({
-            "user": UserSerializer(user, context=self.get_serializer_context()).data,
-            "token": AuthToken.objects.create(user)[1]
-        })
+        # Use CustomTokenObtainPairSerializer for authentication
+        serializer = CustomTokenObtainPairSerializer(data=request.data)
+        
+        try:
+            serializer.is_valid(raise_exception=True)
+            validated_data = serializer.validated_data
+            
+            user = validated_data.get('user')
+            
+            return Response({
+                "user": UserSerializer(user, context=self.get_serializer_context()).data,
+                "refresh": validated_data.get('refresh'),
+                "access": validated_data.get('access'),
+            }, status=status.HTTP_200_OK)
+            
+        except serializers.ValidationError as e:
+            return Response(
+                {"error": "Invalid credentials"},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        except Exception as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 # Get User API
 
@@ -51,6 +118,28 @@ class UserAPI(generics.RetrieveAPIView):
 
     def get_object(self):
         return self.request.user
+
+# Logout API
+
+
+class LogoutAPI(generics.GenericAPIView):
+    serializer_class = LogoutSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(
+                {"message": "Successfully logged out"},
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            return Response(
+                {"error": "Failed to logout"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 # Course Viewset
 

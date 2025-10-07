@@ -1,59 +1,99 @@
 from rest_framework import serializers, exceptions
 from .models import User, Course, Chapter, Quiz, Question, StudentProgress, CourseRating, QuizAttempt
 from django.contrib.auth import authenticate
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.exceptions import TokenError
 
 # Login Serializer
+
+
 class LoginSerializer(serializers.Serializer):
     email = serializers.EmailField()
     password = serializers.CharField()
 
-    def validate(self, data):
-        user = authenticate(**data)
-        if user and user.is_active:
-            return user
-        raise serializers.ValidationError("Incorrect Credentials")
+    def validate(self, attrs):
+        email = attrs.get('email')
+        password = attrs.get('password')
+
+        if email and password:
+            user = authenticate(email=email, password=password)
+            if user and user.is_active:
+                attrs['user'] = user
+                return attrs
+            else:
+                raise serializers.ValidationError("Incorrect Credentials")
+        else:
+            raise serializers.ValidationError(
+                "Must include email and password")
+
 
 class RegisterSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'email', 'password', 'first_name', 'last_name')
+        fields = ('id', 'email', 'password', 'first_name', 'last_name', 'role')
         extra_kwargs = {'password': {'write_only': True}}
 
     def create(self, validated_data):
-        user = User.objects.create_user(validated_data['email'], validated_data['password'], first_name=validated_data['first_name'], last_name=validated_data['last_name'])
+        user = User.objects.create_user(
+            email=validated_data['email'],
+            password=validated_data['password'],
+            first_name=validated_data['first_name'],
+            last_name=validated_data['last_name'],
+            role=validated_data.get('role', 'student')
+        )
         return user
+
+
+class LogoutSerializer(serializers.Serializer):
+    refresh = serializers.CharField()
+
+    def validate(self, attrs):
+        self.token = attrs['refresh']
+        return attrs
+
+    def save(self, **kwargs):
+        try:
+            RefreshToken(self.token).blacklist()
+        except TokenError:
+            raise serializers.ValidationError('Invalid or expired token')
+
 
 class UserSerializer(serializers.ModelSerializer):
     name = serializers.ReadOnlyField()
-    
+
     class Meta:
         model = User
-        fields = ['id', 'email', 'first_name', 'last_name', 'name', 'role', 'avatar', 'total_xp', 'level', 'streak_days', 'created_at', 'updated_at']
+        fields = ['id', 'email', 'first_name', 'last_name', 'name', 'role',
+                  'avatar', 'total_xp', 'level', 'streak_days', 'created_at', 'updated_at']
+
 
 class QuestionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Question
         fields = '__all__'
 
+
 class QuizSerializer(serializers.ModelSerializer):
     questions = QuestionSerializer(many=True, read_only=True)
-    
+
     class Meta:
         model = Quiz
         fields = '__all__'
 
+
 class ChapterSerializer(serializers.ModelSerializer):
     quiz = QuizSerializer(read_only=True)
     duration = serializers.SerializerMethodField()
-    
+
     def get_duration(self, obj):
         if obj.estimated_minutes:
             return f"{obj.estimated_minutes} min"
         return None
-    
+
     class Meta:
         model = Chapter
         fields = '__all__'
+
 
 class CourseSerializer(serializers.ModelSerializer):
     chapters = ChapterSerializer(many=True, read_only=True)
@@ -63,10 +103,12 @@ class CourseSerializer(serializers.ModelSerializer):
     teacher_name = serializers.ReadOnlyField()
     enrollment_count = serializers.ReadOnlyField()
     rating = serializers.ReadOnlyField(source='average_rating')
-    instructor = serializers.ReadOnlyField(source='teacher_name')  # For frontend compatibility
+    instructor = serializers.ReadOnlyField(
+        source='teacher_name')  # For frontend compatibility
     duration = serializers.SerializerMethodField()
-    enrolled_students = serializers.StringRelatedField(many=True, read_only=True)
-    
+    enrolled_students = serializers.StringRelatedField(
+        many=True, read_only=True)
+
     def get_duration(self, obj):
         # Calculate duration based on estimated hours
         if obj.estimated_hours:
@@ -83,26 +125,29 @@ class CourseSerializer(serializers.ModelSerializer):
         model = Course
         fields = '__all__'
 
+
 class StudentProgressSerializer(serializers.ModelSerializer):
     student_id = serializers.ReadOnlyField(source='student.id')
     course_id = serializers.ReadOnlyField(source='course.id')
     progress_percentage = serializers.ReadOnlyField()
-    
+
     class Meta:
         model = StudentProgress
         fields = '__all__'
 
+
 class CourseRatingSerializer(serializers.ModelSerializer):
     student_name = serializers.ReadOnlyField(source='student.name')
-    
+
     class Meta:
         model = CourseRating
         fields = '__all__'
 
+
 class QuizAttemptSerializer(serializers.ModelSerializer):
     student_name = serializers.ReadOnlyField(source='student.name')
     quiz_title = serializers.ReadOnlyField(source='quiz.title')
-    
+
     class Meta:
         model = QuizAttempt
         fields = '__all__'
