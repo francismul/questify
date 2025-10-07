@@ -7,7 +7,7 @@ This document provides an overview of how the backend API tests are structured a
 To run the tests, you need to have the virtual environment set up and the dependencies installed. From the root of the project, run the following command:
 
 ```bash
-/media/the-3000/Hacker/Projects/questify/.venv/bin/python backend/manage.py test
+python manage.py test
 ```
 
 This command will discover and run all the tests in the `backend/api/tests.py` file.
