@@ -2,45 +2,85 @@
 from rest_framework import viewsets, permissions, generics, status
 from rest_framework.response import Response
 from rest_framework.decorators import action
-from knox.models import AuthToken
+from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.views import TokenObtainPairView
+from django.contrib.auth import authenticate
 from django.db.models import Count, Avg, Q
 from django.utils import timezone
 from .serializers import (
-    UserSerializer, RegisterSerializer, LoginSerializer, CourseSerializer,
+    UserSerializer, RegisterSerializer, LoginSerializer, LogoutSerializer, CourseSerializer,
     ChapterSerializer, QuizSerializer, QuestionSerializer, StudentProgressSerializer,
     CourseRatingSerializer, QuizAttemptSerializer
 )
 from .models import User, Course, Chapter, Quiz, Question, StudentProgress, CourseRating, QuizAttempt
+
+# Custom login serializer
+
+
+class CustomTokenObtainPairSerializer:
+    def __init__(self, data):
+        self.validated_data = {}
+        email = data.get('email')
+        password = data.get('password')
+
+        if email and password:
+            user = authenticate(email=email, password=password)
+            if user and user.is_active:
+                refresh = RefreshToken.for_user(user)
+                self.validated_data = {
+                    'refresh': str(refresh),
+                    'access': str(refresh.access_token),
+                    'user': user
+                }
+            else:
+                raise ValueError("Invalid credentials")
+        else:
+            raise ValueError("Email and password required")
 
 # Register API
 
 
 class RegisterAPI(generics.GenericAPIView):
     serializer_class = RegisterSerializer
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
+
+        # Create JWT tokens for the newly registered user
+        refresh = RefreshToken.for_user(user)
+
         return Response({
             "user": UserSerializer(user, context=self.get_serializer_context()).data,
-            "token": AuthToken.objects.create(user)[1]
-        })
+            "refresh": str(refresh),
+            "access": str(refresh.access_token),
+        }, status=status.HTTP_201_CREATED)
 
 # Login API
 
 
 class LoginAPI(generics.GenericAPIView):
     serializer_class = LoginSerializer
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-        serializer.is_valid(raise_exception=True)
-        user = serializer.validated_data
-        return Response({
-            "user": UserSerializer(user, context=self.get_serializer_context()).data,
-            "token": AuthToken.objects.create(user)[1]
-        })
+        serializer = CustomTokenObtainPairSerializer(data=request.data)
+
+        try:
+            if 'user' in serializer.validated_data:
+                user = serializer.validated_data['user']
+                return Response({
+                    "user": UserSerializer(user, context=self.get_serializer_context()).data,
+                    "refresh": serializer.validated_data['refresh'],
+                    "access": serializer.validated_data['access'],
+                })
+        except ValueError as e:
+            return Response(
+                {"error": str(e)},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
 
 # Get User API
 
@@ -51,6 +91,28 @@ class UserAPI(generics.RetrieveAPIView):
 
     def get_object(self):
         return self.request.user
+
+# Logout API
+
+
+class LogoutAPI(generics.GenericAPIView):
+    serializer_class = LogoutSerializer
+    permission_classes = [permissions.IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        try:
+            serializer = self.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(
+                {"message": "Successfully logged out"},
+                status=status.HTTP_200_OK
+            )
+        except Exception as e:
+            return Response(
+                {"error": "Failed to logout"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
 # Course Viewset
 

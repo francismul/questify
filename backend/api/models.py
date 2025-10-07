@@ -3,6 +3,7 @@ from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin
 import uuid
 
+
 class UserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
         if not email:
@@ -24,6 +25,7 @@ class UserManager(BaseUserManager):
 
         return self.create_user(email, password, **extra_fields)
 
+
 class User(AbstractBaseUser, PermissionsMixin):
     ROLE_CHOICES = (
         ('student', 'Student'),
@@ -33,7 +35,8 @@ class User(AbstractBaseUser, PermissionsMixin):
     email = models.EmailField(unique=True)
     first_name = models.CharField(max_length=30, blank=True)
     last_name = models.CharField(max_length=150, blank=True)
-    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='student')
+    role = models.CharField(
+        max_length=10, choices=ROLE_CHOICES, default='student')
     avatar = models.URLField(blank=True)
     total_xp = models.IntegerField(default=0)
     level = models.IntegerField(default=1)
@@ -62,16 +65,19 @@ class Course(models.Model):
         ('intermediate', 'Intermediate'),
         ('advanced', 'Advanced'),
     )
-    
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=255)
     description = models.TextField()
-    teacher = models.ForeignKey(User, on_delete=models.CASCADE, related_name='courses_taught')
+    teacher = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='courses_taught')
     thumbnail = models.URLField(blank=True)
     color = models.CharField(max_length=50, default='#3B82F6')
-    difficulty = models.CharField(max_length=20, choices=DIFFICULTY_CHOICES, default='beginner')
+    difficulty = models.CharField(
+        max_length=20, choices=DIFFICULTY_CHOICES, default='beginner')
     estimated_hours = models.IntegerField()
-    enrolled_students = models.ManyToManyField(User, related_name='enrolled_courses', blank=True)
+    enrolled_students = models.ManyToManyField(
+        User, related_name='enrolled_courses', blank=True)
     tags = models.JSONField(default=list)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -79,22 +85,22 @@ class Course(models.Model):
     @property
     def teacher_id(self):
         return str(self.teacher.id)
-    
+
     @property
     def teacher_name(self):
         return self.teacher.name
-    
+
     @property
     def enrollment_count(self):
         return self.enrolled_students.count()
-    
+
     @property
     def average_rating(self):
         ratings = self.ratings.all()
         if ratings.exists():
             return ratings.aggregate(models.Avg('rating'))['rating__avg']
         return 0.0
-    
+
     @property
     def final_exam(self):
         try:
@@ -108,7 +114,8 @@ class Course(models.Model):
 
 class Chapter(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='chapters')
+    course = models.ForeignKey(
+        Course, on_delete=models.CASCADE, related_name='chapters')
     title = models.CharField(max_length=255)
     content = models.TextField()
     order = models.IntegerField()
@@ -123,37 +130,45 @@ class Chapter(models.Model):
     def __str__(self):
         return f"{self.course.title} - {self.title}"
 
+
 class Quiz(models.Model):
     QUIZ_TYPES = (
         ('chapter', 'Chapter Quiz'),
         ('final', 'Final Exam'),
     )
-    
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='quizzes')
-    chapter = models.OneToOneField(Chapter, on_delete=models.CASCADE, related_name='quiz', null=True, blank=True)
+    course = models.ForeignKey(
+        Course, on_delete=models.CASCADE, related_name='quizzes')
+    chapter = models.OneToOneField(
+        Chapter, on_delete=models.CASCADE, related_name='quiz', null=True, blank=True)
     time_limit = models.IntegerField(null=True, blank=True)  # in minutes
     passing_score = models.IntegerField(default=70)  # percentage
-    max_attempts = models.IntegerField(default=3)  # Renamed from 'attempts' to avoid conflict
-    type = models.CharField(max_length=10, choices=QUIZ_TYPES, default='chapter')
+    # Renamed from 'attempts' to avoid conflict
+    max_attempts = models.IntegerField(default=3)
+    type = models.CharField(
+        max_length=10, choices=QUIZ_TYPES, default='chapter')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.course.title} - {self.title}"
 
+
 class Question(models.Model):
     QUESTION_TYPES = (
         ('multiple-choice', 'Multiple Choice'),
         ('true-false', 'True/False'),
     )
-    
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='questions')
+    quiz = models.ForeignKey(
+        Quiz, on_delete=models.CASCADE, related_name='questions')
     question = models.TextField()
-    type = models.CharField(max_length=20, choices=QUESTION_TYPES, default='multiple-choice')
+    type = models.CharField(
+        max_length=20, choices=QUESTION_TYPES, default='multiple-choice')
     options = models.JSONField(default=list)  # List of strings
     correct_answer = models.IntegerField()  # Index of correct option
     explanation = models.TextField(blank=True)
@@ -168,11 +183,15 @@ class Question(models.Model):
     def __str__(self):
         return f"{self.quiz.title} - Question {self.order + 1}"
 
+
 class CourseRating(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='ratings')
-    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='course_ratings')
-    rating = models.IntegerField(choices=[(i, i) for i in range(1, 6)])  # 1-5 stars
+    course = models.ForeignKey(
+        Course, on_delete=models.CASCADE, related_name='ratings')
+    student = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='course_ratings')
+    rating = models.IntegerField(
+        choices=[(i, i) for i in range(1, 6)])  # 1-5 stars
     review = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -182,12 +201,17 @@ class CourseRating(models.Model):
     def __str__(self):
         return f"{self.course.title} - {self.rating} stars"
 
+
 class StudentProgress(models.Model):
-    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='progress')
-    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='student_progress')
+    student = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='progress')
+    course = models.ForeignKey(
+        Course, on_delete=models.CASCADE, related_name='student_progress')
     enrolled_at = models.DateTimeField(auto_now_add=True)
-    completed_chapters = models.ManyToManyField(Chapter, related_name='completed_by', blank=True)
-    chapter_scores = models.JSONField(default=dict)  # chapter_id -> score percentage
+    completed_chapters = models.ManyToManyField(
+        Chapter, related_name='completed_by', blank=True)
+    # chapter_id -> score percentage
+    chapter_scores = models.JSONField(default=dict)
     quiz_scores = models.JSONField(default=dict)  # quiz_id -> score percentage
     final_exam_score = models.IntegerField(null=True, blank=True)
     final_exam_attempts = models.IntegerField(default=0)
@@ -211,11 +235,15 @@ class StudentProgress(models.Model):
     def __str__(self):
         return f"{self.student.name} - {self.course.title}"
 
+
 class QuizAttempt(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    student = models.ForeignKey(User, on_delete=models.CASCADE, related_name='quiz_attempts')
-    quiz = models.ForeignKey(Quiz, on_delete=models.CASCADE, related_name='attempts')
-    answers = models.JSONField(default=dict)  # question_id -> selected_answer_index
+    student = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name='quiz_attempts')
+    quiz = models.ForeignKey(
+        Quiz, on_delete=models.CASCADE, related_name='attempts')
+    # question_id -> selected_answer_index
+    answers = models.JSONField(default=dict)
     score = models.IntegerField()  # percentage
     time_taken = models.IntegerField()  # in minutes
     started_at = models.DateTimeField(auto_now_add=True)
