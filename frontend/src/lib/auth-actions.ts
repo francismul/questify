@@ -141,8 +141,9 @@ export async function registerAction(
 }
 
 export async function logoutAction(): Promise<void> {
+  const cookieStore = await cookies();
+  
   try {
-    const cookieStore = await cookies();
     const accessToken = cookieStore.get("questify_access_token")?.value;
     const refreshToken = cookieStore.get("questify_refresh_token")?.value;
 
@@ -160,14 +161,14 @@ export async function logoutAction(): Promise<void> {
         }
       );
     }
-
-    // Clear cookies
-    cookieStore.delete("questify_access_token");
-    cookieStore.delete("questify_refresh_token");
-    cookieStore.delete("questify_user_data");
   } catch (error) {
     console.error("Logout action error:", error);
     // Continue with logout even if API call fails
+  } finally {
+    // Always clear cookies
+    cookieStore.delete("questify_access_token");
+    cookieStore.delete("questify_refresh_token");
+    cookieStore.delete("questify_user_data");
   }
 
   // Revalidate and redirect
