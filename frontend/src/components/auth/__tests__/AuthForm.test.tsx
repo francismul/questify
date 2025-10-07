@@ -1,7 +1,4 @@
 import React from 'react';
-/**
- * @jest-environment node
- */
 
 // Mock auth-actions BEFORE importing AuthForm
 jest.mock('@/lib/auth-actions', () => ({
