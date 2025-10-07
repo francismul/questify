@@ -318,7 +318,7 @@ class CourseAnalyticsAPI(generics.GenericAPIView):
                 'completion_rate': (completed_count / max(total_enrolled, 1)) * 100,
                 'average_score': StudentProgress.objects.filter(
                     course=course,
-                    chapter_scores__has_key=str(chapter.id)
+                    chapter_scores__contains={str(chapter.id): {}}
                 ).aggregate(
                     avg_score=Avg('chapter_scores__' + str(chapter.id))
                 )['avg_score'] or 0
