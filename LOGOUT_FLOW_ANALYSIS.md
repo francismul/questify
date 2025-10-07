@@ -137,24 +137,7 @@ SIMPLE_JWT = {
 3. **HttpOnly Cookies**: Tokens stored securely, not accessible to JavaScript
 4. **Graceful Degradation**: Frontend continues logout even if backend call fails
 5. **Complete Cleanup**: All cookies deleted, user data cleared
-
-### ⚠️ Minor Issue Found
-
-**File: `frontend/src/lib/auth-server.ts`**
-```typescript
-// Logout user (to be called from API route)
-static async logout(): Promise<void> {
-  // For JWT, we just clear cookies since tokens are stateless
-  // In a production app, you might want to implement token blacklisting
-  await this.clearAuthCookies();
-}
-```
-
-**Issue**: This method has outdated comments and doesn't call backend for blacklisting.
-
-**Status**: ✅ **NOT A PROBLEM** - This method is not used anywhere in the codebase. The actual logout flow uses `logoutAction()` which properly calls the backend.
-
-**Recommendation**: Consider updating the `AuthServerService.logout()` method to also call the backend for consistency, or remove it if it's not needed.
+6. **Revalidation**: Ensures stale data is not accessible post-logout
 
 ### 🔒 Token Blacklist Flow
 
