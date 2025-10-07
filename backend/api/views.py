@@ -1,4 +1,5 @@
 
+from .permissions import IsTeacherOrReadOnly
 from rest_framework import viewsets, permissions, generics, status, serializers
 from rest_framework.response import Response
 from rest_framework.decorators import action
@@ -147,7 +148,10 @@ class LogoutAPI(generics.GenericAPIView):
 class CourseViewSet(viewsets.ModelViewSet):
     queryset = Course.objects.all()
     serializer_class = CourseSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly,]
+    permission_classes = [IsTeacherOrReadOnly,]
+
+    def perform_create(self, serializer):
+        serializer.save(teacher=self.request.user)
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def enroll(self, request, pk=None):
@@ -190,7 +194,7 @@ class CourseViewSet(viewsets.ModelViewSet):
 class ChapterViewSet(viewsets.ModelViewSet):
     queryset = Chapter.objects.all()
     serializer_class = ChapterSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly,]
+    permission_classes = [IsTeacherOrReadOnly,]
 
 # Quiz Viewset
 
@@ -198,7 +202,7 @@ class ChapterViewSet(viewsets.ModelViewSet):
 class QuizViewSet(viewsets.ModelViewSet):
     queryset = Quiz.objects.all()
     serializer_class = QuizSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly,]
+    permission_classes = [IsTeacherOrReadOnly,]
 
     @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
     def submit(self, request, pk=None):
@@ -243,7 +247,7 @@ class QuizViewSet(viewsets.ModelViewSet):
 class QuestionViewSet(viewsets.ModelViewSet):
     queryset = Question.objects.all()
     serializer_class = QuestionSerializer
-    permission_classes = [permissions.IsAuthenticatedOrReadOnly,]
+    permission_classes = [IsTeacherOrReadOnly,]
 
 # StudentProgress Viewset
 

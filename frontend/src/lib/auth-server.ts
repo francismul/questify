@@ -31,7 +31,7 @@ export interface ApiError {
 // Configuration
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
-  
+
 const ACCESS_TOKEN_COOKIE = "questify_access_token";
 const REFRESH_TOKEN_COOKIE = "questify_refresh_token";
 const USER_DATA_COOKIE = "questify_user_data";
@@ -250,8 +250,27 @@ export class AuthServerService {
 
   // Logout user (to be called from API route)
   static async logout(): Promise<void> {
-    // For JWT, we just clear cookies since tokens are stateless
-    // In a production app, you might want to implement token blacklisting
+    try {
+      const accessToken = await this.getAccessToken();
+      const refreshToken = await this.getRefreshToken();
+
+      // Call backend to blacklist the token
+      if (refreshToken && accessToken) {
+        await fetch(`${API_BASE_URL}/auth/logout/`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({ refresh: refreshToken }),
+        });
+      }
+    } catch (error) {
+      console.error("Error calling backend logout:", error);
+      // Continue with logout even if backend call fails
+    }
+
+    // Clear cookies
     await this.clearAuthCookies();
   }
 
