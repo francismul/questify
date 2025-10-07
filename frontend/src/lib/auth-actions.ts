@@ -12,7 +12,7 @@ export async function loginAction(
   try {
     // Call Django backend directly
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5600"}/api/v1/auth/login/`,
+      `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/api/v1/auth/login/`,
       {
         method: "POST",
         headers: {
@@ -81,7 +81,7 @@ export async function registerAction(
   try {
     // Call Django backend directly
     const response = await fetch(
-      `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5600"}/api/v1/auth/register/`,
+      `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/api/v1/auth/register/`,
       {
         method: "POST",
         headers: {
@@ -149,7 +149,7 @@ export async function logoutAction(): Promise<void> {
     // Call Django backend logout if we have tokens
     if (refreshToken) {
       await fetch(
-        `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5600"}/api/v1/auth/logout/`,
+        `${process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"}/api/v1/auth/logout/`,
         {
           method: "POST",
           headers: {

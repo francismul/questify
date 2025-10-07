@@ -78,10 +78,11 @@ export const AuthForm: React.FC<AuthFormProps> = ({
         const result = await login(formData.email, formData.password);
         if (result.success) {
           setSuccess('Login successful! Redirecting...');
-          // Force a full page reload to ensure cookies are properly set
+          // Refresh the router to pick up new cookies and redirect
+          router.refresh();
           setTimeout(() => {
-            window.location.href = '/';
-          }, 1000);
+            router.push('/');
+          }, 500);
         } else {
           setError(result.error || 'Login failed');
         }
@@ -100,10 +101,11 @@ export const AuthForm: React.FC<AuthFormProps> = ({
         );
         if (result.success) {
           setSuccess('Registration successful! Redirecting...');
-          // Force a full page reload to ensure cookies are properly set
+          // Refresh the router to pick up new cookies and redirect
+          router.refresh();
           setTimeout(() => {
-            window.location.href = '/';
-          }, 1000);
+            router.push('/');
+          }, 500);
         } else {
           setError(result.error || 'Registration failed');
         }

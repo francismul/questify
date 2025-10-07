@@ -1,8 +1,9 @@
 
-from rest_framework import viewsets, permissions, generics, status
+from rest_framework import viewsets, permissions, generics, status, serializers
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from rest_framework_simplejwt.views import TokenObtainPairView
 from django.contrib.auth import authenticate
 from django.db.models import Count, Avg, Q
@@ -14,28 +15,44 @@ from .serializers import (
 )
 from .models import User, Course, Chapter, Quiz, Question, StudentProgress, CourseRating, QuizAttempt
 
-# Custom login serializer
+# Custom login serializer that includes user data
 
 
-class CustomTokenObtainPairSerializer:
-    def __init__(self, data):
-        self.validated_data = {}
-        email = data.get('email')
-        password = data.get('password')
-
-        if email and password:
-            user = authenticate(email=email, password=password)
-            if user and user.is_active:
-                refresh = RefreshToken.for_user(user)
-                self.validated_data = {
-                    'refresh': str(refresh),
-                    'access': str(refresh.access_token),
-                    'user': user
-                }
-            else:
-                raise ValueError("Invalid credentials")
-        else:
-            raise ValueError("Email and password required")
+class CustomTokenObtainPairSerializer(TokenObtainPairSerializer):
+    username_field = 'email'
+    
+    def validate(self, attrs):
+        # Get email and password from attrs
+        email = attrs.get('email')
+        password = attrs.get('password')
+        
+        # Authenticate user
+        user = authenticate(email=email, password=password)
+        
+        if user is None or not user.is_active:
+            raise serializers.ValidationError(
+                {'error': 'Invalid credentials'},
+                code='authorization'
+            )
+        
+        # Generate tokens using parent class method
+        refresh = self.get_token(user)
+        
+        data = {
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+            'user': user
+        }
+        
+        return data
+    
+    @classmethod
+    def get_token(cls, user):
+        token = super().get_token(user)
+        # Add custom claims if needed
+        token['email'] = user.email
+        token['role'] = user.role
+        return token
 
 # Register API
 
@@ -66,20 +83,30 @@ class LoginAPI(generics.GenericAPIView):
     permission_classes = [permissions.AllowAny]
 
     def post(self, request, *args, **kwargs):
+        # Use CustomTokenObtainPairSerializer for authentication
         serializer = CustomTokenObtainPairSerializer(data=request.data)
-
+        
         try:
-            if 'user' in serializer.validated_data:
-                user = serializer.validated_data['user']
-                return Response({
-                    "user": UserSerializer(user, context=self.get_serializer_context()).data,
-                    "refresh": serializer.validated_data['refresh'],
-                    "access": serializer.validated_data['access'],
-                })
-        except ValueError as e:
+            serializer.is_valid(raise_exception=True)
+            validated_data = serializer.validated_data
+            
+            user = validated_data.get('user')
+            
+            return Response({
+                "user": UserSerializer(user, context=self.get_serializer_context()).data,
+                "refresh": validated_data.get('refresh'),
+                "access": validated_data.get('access'),
+            }, status=status.HTTP_200_OK)
+            
+        except serializers.ValidationError as e:
+            return Response(
+                {"error": "Invalid credentials"},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        except Exception as e:
             return Response(
                 {"error": str(e)},
-                status=status.HTTP_401_UNAUTHORIZED
+                status=status.HTTP_400_BAD_REQUEST
             )
 
 # Get User API
