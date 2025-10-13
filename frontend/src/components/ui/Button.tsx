@@ -1,19 +1,20 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, HTMLMotionProps } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 interface ButtonProps {
-  variant?: 'default' | 'ghost' | 'outline' | 'glow';
-  size?: 'sm' | 'md' | 'lg';
+  variant?: 'default' | 'ghost' | 'outline' | 'glow' | 'accent';
+  size?: 'sm' | 'md' | 'lg' | 'icon';
   isLoading?: boolean;
   children: React.ReactNode;
   className?: string;
   disabled?: boolean;
-  onClick?: () => void;
+  onClick?: React.MouseEventHandler<HTMLButtonElement>;
   type?: 'button' | 'submit' | 'reset';
+  asChild?: boolean;
 }
 
-export const Button: React.FC<ButtonProps> = ({
+export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(({
   variant = 'default',
   size = 'md',
   isLoading = false,
@@ -21,25 +22,29 @@ export const Button: React.FC<ButtonProps> = ({
   children,
   disabled,
   onClick,
-  type = 'button'
-}) => {
-  const baseClasses = "relative inline-flex items-center justify-center rounded-xl font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden";
+  type = 'button',
+  ...props
+}, ref) => {
+  const baseClasses = "relative inline-flex items-center justify-center rounded-lg font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed overflow-hidden";
   
   const variants = {
-    default: "bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 focus:ring-blue-500",
-    ghost: "text-slate-300 hover:text-white hover:bg-slate-800/50",
-    outline: "border border-slate-600 text-slate-300 hover:border-slate-500 hover:text-white hover:bg-slate-800/30",
-    glow: "bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-400 hover:to-purple-500 focus:ring-blue-500 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40"
+    default: "bg-primary text-primary-foreground hover:bg-primary/90 focus:ring-primary",
+    ghost: "text-foreground hover:bg-accent/10 hover:text-accent-foreground",
+    outline: "border border-border text-foreground hover:bg-accent hover:text-accent-foreground",
+    glow: "bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-400 hover:to-purple-500 focus:ring-blue-500 shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40",
+    accent: "bg-accent text-accent-foreground hover:bg-accent/90 focus:ring-accent font-semibold"
   };
   
   const sizes = {
-    sm: "h-8 px-3 text-sm",
+    sm: "h-9 px-3 text-sm",
     md: "h-10 px-4 text-sm",
-    lg: "h-12 px-6 text-base"
+    lg: "h-12 px-6 text-base",
+    icon: "h-10 w-10"
   };
 
   return (
     <motion.button
+      ref={ref}
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
       className={cn(baseClasses, variants[variant], sizes[size], className)}
@@ -73,4 +78,6 @@ export const Button: React.FC<ButtonProps> = ({
       </span>
     </motion.button>
   );
-};
+});
+
+Button.displayName = 'Button';

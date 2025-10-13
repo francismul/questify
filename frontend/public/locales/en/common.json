@@ -1,0 +1,32 @@
+{
+  "common": {
+    "dashboard": "Dashboard",
+    "logout": "Logout",
+    "language": "Language",
+    "english": "English",
+    "spanish": "Spanish",
+    "french": "French",
+    "german": "German",
+    "notifications": "Notifications",
+    "profile": "Profile",
+    "settings": "Settings",
+    "courses": "Courses",
+    "reports": "Reports",
+    "messages": "Messages",
+    "achievements": "Achievements",
+    "goals": "Goals",
+    "students": "Students",
+    "analytics": "Analytics",
+    "campaigns": "Campaigns",
+    "myProfile": "My Profile",
+    "myCourses": "My Courses",
+    "loggingOut": "Logging out...",
+    "guestUser": "Guest User",
+    "student": "Student",
+    "teacher": "Teacher"
+  },
+  "navigation": {
+    "home": "Home",
+    "dashboard": "Dashboard"
+  }
+}

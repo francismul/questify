@@ -13,7 +13,13 @@ export interface ApiResponse<T = any> {
 // Base URL for your Next.js API routes
 const API_BASE = "/api";
 
-// Client-side API utilities for communicating with Next.js API routes
+/**
+ * Client-side API utilities for communicating with Next.js API routes
+ * 
+ * Note: For authentication (login, register, logout), use server actions
+ * from auth-actions.ts instead of API routes for better performance
+ * and Next.js 14+ App Router compliance.
+ */
 export class ClientApiService {
   // Generic method for making requests to Next.js API routes
   private static async makeRequest<T>(
@@ -21,7 +27,7 @@ export class ClientApiService {
     options: RequestInit = {}
   ): Promise<ApiResponse<T>> {
     try {
-      const response = await fetch(`${API_BASE}${endpoint}`, {
+      const response = await fetch(`/api${endpoint}`, {
         headers: {
           "Content-Type": "application/json",
           ...options.headers,
@@ -31,63 +37,23 @@ export class ClientApiService {
 
       const data = await response.json();
 
-      if (!response.ok) {
+      if (response.ok) {
+        return {
+          success: true,
+          data,
+        };
+      } else {
         return {
           success: false,
-          error:
-            data.error || `HTTP ${response.status}: ${response.statusText}`,
+          error: data.error || "Request failed",
         };
       }
-
-      return {
-        success: true,
-        data: data.data || data,
-        message: data.message,
-      };
     } catch (error) {
-      console.error("API request failed:", error);
       return {
         success: false,
         error: "Network error or unexpected error occurred",
       };
     }
-  }
-
-  // Auth-related API calls to Next.js routes
-  static async login(email: string, password: string): Promise<ApiResponse> {
-    return this.makeRequest("/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email, password }),
-    });
-  }
-
-  static async register(
-    email: string,
-    password: string,
-    firstName: string,
-    lastName: string,
-    role: "student" | "teacher"
-  ): Promise<ApiResponse> {
-    return this.makeRequest("/auth/register", {
-      method: "POST",
-      body: JSON.stringify({ email, password, firstName, lastName, role }),
-    });
-  }
-
-  static async logout(): Promise<ApiResponse> {
-    return this.makeRequest("/auth/logout", {
-      method: "POST",
-    });
-  }
-
-  static async getCurrentUser(): Promise<ApiResponse> {
-    return this.makeRequest("/auth/user");
-  }
-
-  static async refreshUserData(): Promise<ApiResponse> {
-    return this.makeRequest("/auth/user", {
-      method: "PUT",
-    });
   }
 
   // Example: Client-side API call for updating user preferences
@@ -98,6 +64,8 @@ export class ClientApiService {
       body: JSON.stringify(preferences),
     });
   }
+
+  // Add other non-auth related API calls here as needed...
 }
 
 // Legacy export for backward compatibility (if needed)

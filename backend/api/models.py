@@ -37,7 +37,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     last_name = models.CharField(max_length=150, blank=True)
     role = models.CharField(
         max_length=10, choices=ROLE_CHOICES, default='student')
-    avatar = models.URLField(blank=True)
+    avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
     total_xp = models.IntegerField(default=0)
     level = models.IntegerField(default=1)
     streak_days = models.IntegerField(default=0)
@@ -71,7 +71,7 @@ class Course(models.Model):
     description = models.TextField()
     teacher = models.ForeignKey(
         User, on_delete=models.CASCADE, related_name='courses_taught')
-    thumbnail = models.URLField(blank=True)
+    thumbnail = models.ImageField(upload_to='course_thumbnails/', blank=True, null=True)
     color = models.CharField(max_length=50, default='#3B82F6')
     difficulty = models.CharField(
         max_length=20, choices=DIFFICULTY_CHOICES, default='beginner')

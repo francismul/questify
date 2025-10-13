@@ -9,7 +9,10 @@ import {
   GraduationCap,
   BookOpen,
   ArrowLeft,
-  Sparkles
+  Sparkles,
+  Rocket,
+  Trophy,
+  Star
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';

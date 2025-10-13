@@ -1,84 +1,98 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AuthServerService, ApiError } from '@/lib/auth-server';
+import { cookies } from 'next/headers';
 
-export async function GET(request: NextRequest) {
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+
+export async function PATCH(request: NextRequest) {
   try {
-    // Get cookies from the request
-    const accessToken = request.cookies.get('questify_access_token')?.value;
-    const userDataCookie = request.cookies.get('questify_user_data')?.value;
-    
-    if (!accessToken || !userDataCookie) {
+    // Get the access token from HTTP-only cookie
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get('questify_access_token')?.value;
+
+    if (!accessToken) {
       return NextResponse.json(
-        { error: 'Not authenticated' },
+        { error: 'Authentication required' },
         { status: 401 }
       );
     }
 
-    // Parse user data
-    let user;
-    try {
-      user = JSON.parse(userDataCookie);
-    } catch (error) {
-      return NextResponse.json(
-        { error: 'Invalid user data' },
-        { status: 401 }
-      );
-    }
+    // Get the request body as FormData to handle file uploads
+    const formData = await request.formData();
 
-    return NextResponse.json({
-      success: true,
-      user,
+    // Forward the request to Django backend
+    const backendResponse = await fetch(`${API_BASE_URL}/auth/user/`, {
+      method: 'PATCH',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
+      body: formData,
     });
 
-  } catch (error) {
-    console.error('Get user error:', error);
-    
-    if (error instanceof ApiError) {
+    if (!backendResponse.ok) {
+      const errorData = await backendResponse.json().catch(() => ({}));
       return NextResponse.json(
-        { error: error.message },
-        { status: error.status }
+        { error: errorData.detail || 'Failed to update profile' },
+        { status: backendResponse.status }
       );
     }
 
+    const userData = await backendResponse.json();
+
+    // Update user data in cookies so server components get fresh data
+    cookieStore.set('questify_user_data', JSON.stringify(userData), {
+      httpOnly: false, // Allow client-side access
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: '/',
+    });
+
+    return NextResponse.json(userData);
+  } catch (error) {
+    console.error('Profile update error:', error);
     return NextResponse.json(
-      { error: 'An unexpected error occurred' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
 }
 
-export async function PUT(request: NextRequest) {
+export async function GET(request: NextRequest) {
   try {
-    // Check if user is authenticated
-    const isAuthenticated = await AuthServerService.isAuthenticated();
-    
-    if (!isAuthenticated) {
+    // Get the access token from HTTP-only cookie
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get('questify_access_token')?.value;
+
+    if (!accessToken) {
       return NextResponse.json(
-        { error: 'Not authenticated' },
+        { error: 'Authentication required' },
         { status: 401 }
       );
     }
 
-    // Refresh user data from backend
-    const user = await AuthServerService.refreshUserData();
-
-    return NextResponse.json({
-      success: true,
-      user,
+    // Forward the request to Django backend
+    const backendResponse = await fetch(`${API_BASE_URL}/auth/user/`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${accessToken}`,
+      },
     });
 
-  } catch (error) {
-    console.error('Refresh user error:', error);
-    
-    if (error instanceof ApiError) {
+    if (!backendResponse.ok) {
+      const errorData = await backendResponse.json().catch(() => ({}));
       return NextResponse.json(
-        { error: error.message },
-        { status: error.status }
+        { error: errorData.detail || 'Failed to fetch user profile' },
+        { status: backendResponse.status }
       );
     }
 
+    const userData = await backendResponse.json();
+
+    return NextResponse.json(userData);
+  } catch (error) {
+    console.error('Profile fetch error:', error);
     return NextResponse.json(
-      { error: 'An unexpected error occurred' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

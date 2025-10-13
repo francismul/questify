@@ -1,6 +1,18 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
+/**
+ * AuthServerService - Server-side authentication utilities
+ * 
+ * This service provides utilities for:
+ * - Reading authentication state from cookies
+ * - Making authenticated API requests with automatic token refresh
+ * - Protecting server components and pages
+ * 
+ * For authentication actions (login, register, logout), use server actions
+ * from auth-actions.ts instead of this service.
+ */
+
 // Types
 export interface User {
   id: string;
@@ -73,47 +85,33 @@ export class AuthServerService {
     }
   }
 
-  // Set authentication cookies
+  // Set authentication cookies (legacy - consider using server actions instead)
   static async setAuthCookies(authResponse: AuthResponse) {
     const cookieStore = await cookies();
 
-    // Set access token
     cookieStore.set(ACCESS_TOKEN_COOKIE, authResponse.access, {
       ...cookieConfig,
       maxAge: 60 * 60, // 1 hour
     });
 
-    // Set refresh token
     cookieStore.set(REFRESH_TOKEN_COOKIE, authResponse.refresh, {
       ...cookieConfig,
       maxAge: 60 * 60 * 24 * 7, // 7 days
     });
 
-    // Set user data
     cookieStore.set(USER_DATA_COOKIE, JSON.stringify(authResponse.user), {
       ...cookieConfig,
       maxAge: 60 * 60 * 24 * 7, // 7 days
     });
   }
 
-  // Clear authentication cookies
+  // Clear authentication cookies (legacy - consider using server actions instead)
   static async clearAuthCookies() {
     const cookieStore = await cookies();
 
-    cookieStore.set(ACCESS_TOKEN_COOKIE, "", {
-      ...cookieConfig,
-      maxAge: 0,
-    });
-
-    cookieStore.set(REFRESH_TOKEN_COOKIE, "", {
-      ...cookieConfig,
-      maxAge: 0,
-    });
-
-    cookieStore.set(USER_DATA_COOKIE, "", {
-      ...cookieConfig,
-      maxAge: 0,
-    });
+    cookieStore.delete(ACCESS_TOKEN_COOKIE);
+    cookieStore.delete(REFRESH_TOKEN_COOKIE);
+    cookieStore.delete(USER_DATA_COOKIE);
   }
 
   // Make authenticated API request with automatic token refresh
@@ -197,82 +195,7 @@ export class AuthServerService {
     return response.json();
   }
 
-  // Login user (to be called from API route)
-  static async login(email: string, password: string): Promise<AuthResponse> {
-    const response = await fetch(`${API_BASE_URL}/auth/login/`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email, password }),
-    });
 
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new ApiError(errorData.message || "Login failed", response.status);
-    }
-
-    return response.json();
-  }
-
-  // Register user (to be called from API route)
-  static async register(
-    email: string,
-    password: string,
-    firstName: string,
-    lastName: string,
-    role: "student" | "teacher" = "student"
-  ): Promise<AuthResponse> {
-    const response = await fetch(`${API_BASE_URL}/auth/register/`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        email,
-        password,
-        first_name: firstName,
-        last_name: lastName,
-        role,
-      }),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
-      throw new ApiError(
-        errorData.message || "Registration failed",
-        response.status
-      );
-    }
-
-    return response.json();
-  }
-
-  // Logout user (to be called from API route)
-  static async logout(): Promise<void> {
-    try {
-      const accessToken = await this.getAccessToken();
-      const refreshToken = await this.getRefreshToken();
-
-      // Call backend to blacklist the token
-      if (refreshToken && accessToken) {
-        await fetch(`${API_BASE_URL}/auth/logout/`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({ refresh: refreshToken }),
-        });
-      }
-    } catch (error) {
-      console.error("Error calling backend logout:", error);
-      // Continue with logout even if backend call fails
-    }
-
-    // Clear cookies
-    await this.clearAuthCookies();
-  }
 
   // Check if user is authenticated
   static async isAuthenticated(): Promise<boolean> {

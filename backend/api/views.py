@@ -1,6 +1,6 @@
 
 from .permissions import IsTeacherOrReadOnly
-from rest_framework import viewsets, permissions, generics, status, serializers
+from rest_framework import viewsets, permissions, generics, status, serializers, parsers
 from rest_framework.response import Response
 from rest_framework.decorators import action
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -113,9 +113,10 @@ class LoginAPI(generics.GenericAPIView):
 # Get User API
 
 
-class UserAPI(generics.RetrieveAPIView):
+class UserAPI(generics.RetrieveUpdateAPIView):
     permission_classes = [permissions.IsAuthenticated,]
     serializer_class = UserSerializer
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
 
     def get_object(self):
         return self.request.user

@@ -1,511 +1,389 @@
-'use client';
+"use client"
 
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useEffect } from "react"
+import { MetricCard } from "@/components/dashboard/MetricCard"
+import { Button } from "@/components/ui/Button"
 import {
-  Plus,
-  Search,
-  Filter,
-  BookOpen,
-  Users,
-  BarChart3,
-  Settings,
-  Upload,
-  Edit3,
-  Eye,
-  Star,
-  TrendingUp,
-  Award,
-  Target
-} from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { Course } from '@/types';
-import { cn } from '@/lib/utils';
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow
+} from "@/components/ui/table"
+import { Users, BookOpen, TrendingUp, MessageSquare, Edit, Plus } from "lucide-react"
+import { CourseModal } from "./CourseModal"
+import { getTeacherCourses, createCourse, updateCourse, CourseResponse } from "@/lib/auth-actions"
 
-interface TeacherDashboardProps {
-  teacherId: string;
-  className?: string;
-}
-
-// Sample teacher data - extending Course interface for teacher dashboard needs
-interface TeacherCourse extends Course {
-  enrollmentCount: number;
-  rating: number;
-  instructor: string;
-  duration: string;
-}
-
-const sampleTeacherCourses: TeacherCourse[] = [
+const recentSubmissions = [
   {
-    id: '1',
-    title: 'Introduction to Web Development',
-    description: 'Learn the fundamentals of HTML, CSS, and JavaScript',
-    teacherId: 'teacher-1',
-    teacherName: 'Dr. Sarah Chen',
-    instructor: 'Dr. Sarah Chen',
-    thumbnail: '',
-    color: '#3B82F6',
-    difficulty: 'beginner',
-    estimatedHours: 40,
-    duration: '4 weeks',
-    tags: ['HTML', 'CSS', 'JavaScript'],
-    enrollmentCount: 245,
-    rating: 4.8,
-    chapters: [],
-    finalExam: { 
-      id: 'exam-1', 
-      title: 'Final Exam', 
-      questions: [], 
-      timeLimit: 60,
-      passingScore: 70,
-      attempts: 3,
-      type: 'final' as const
-    },
-    enrolledStudents: [],
-    createdAt: '2024-01-01',
-    updatedAt: '2024-01-01'
+    id: 1,
+    student: "Alice Johnson",
+    assignment: "React Hooks Project",
+    course: "Introduction to React",
+    submittedAt: "2 hours ago",
+    status: "pending",
   },
   {
-    id: '2',
-    title: 'Advanced React Patterns',
-    description: 'Master advanced React concepts and patterns',
-    teacherId: 'teacher-1',
-    teacherName: 'Dr. Sarah Chen',
-    instructor: 'Dr. Sarah Chen',
-    thumbnail: '',
-    color: '#8B5CF6',
-    difficulty: 'advanced',
-    estimatedHours: 60,
-    duration: '6 weeks',
-    tags: ['React', 'JavaScript', 'Patterns'],
-    enrollmentCount: 156,
-    rating: 4.9,
-    chapters: [],
-    finalExam: { 
-      id: 'exam-2', 
-      title: 'Final Exam', 
-      questions: [], 
-      timeLimit: 90,
-      passingScore: 75,
-      attempts: 3,
-      type: 'final' as const
-    },
-    enrolledStudents: [],
-    createdAt: '2024-01-01',
-    updatedAt: '2024-01-01'
+    id: 2,
+    student: "Bob Smith",
+    assignment: "TypeScript Quiz",
+    course: "Advanced TypeScript",
+    submittedAt: "5 hours ago",
+    status: "pending",
+  },
+  {
+    id: 3,
+    student: "Carol Williams",
+    assignment: "Design Portfolio",
+    course: "Web Design Fundamentals",
+    submittedAt: "1 day ago",
+    status: "graded",
+  },
+  {
+    id: 4,
+    student: "David Brown",
+    assignment: "API Integration",
+    course: "Full Stack Development",
+    submittedAt: "1 day ago",
+    status: "pending",
+  },
+]
+
+const studentActivity = [
+  { name: "Most Active", value: "Alice Johnson", count: "42 hrs this week" },
+  { name: "Top Performer", value: "Bob Smith", count: "98% avg score" },
+  { name: "Needs Support", value: "Eva Garcia", count: "3 missed deadlines" },
+]
+
+export function TeacherDashboard() {
+  const [courses, setCourses] = useState<CourseResponse[]>([])
+  const [loading, setLoading] = useState(true)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [editingCourse, setEditingCourse] = useState<CourseResponse | null>(null)
+  const [modalTitle, setModalTitle] = useState("")
+  const [modalSubmitLabel, setModalSubmitLabel] = useState("")
+
+  useEffect(() => {
+    fetchCourses()
+  }, [])
+
+  const fetchCourses = async () => {
+    try {
+      const courseData = await getTeacherCourses()
+      setCourses(courseData)
+    } catch (error) {
+      console.error("Error fetching courses:", error)
+    } finally {
+      setLoading(false)
+    }
   }
-];
 
-const sampleStudents = [
-  { id: '1', name: 'Alex Johnson', email: 'alex@example.com', progress: 85, lastActive: '2 hours ago' },
-  { id: '2', name: 'Maria Garcia', email: 'maria@example.com', progress: 72, lastActive: '1 day ago' },
-  { id: '3', name: 'David Kim', email: 'david@example.com', progress: 94, lastActive: '30 minutes ago' },
-  { id: '4', name: 'Emma Wilson', email: 'emma@example.com', progress: 67, lastActive: '3 days ago' }
-];
+  // Calculate metrics from real data
+  const totalStudents = courses.reduce((sum, course) => sum + course.enrollment_count, 0)
+  const averageRating = courses.length > 0 
+    ? courses.reduce((sum, course) => sum + (course.rating || 0), 0) / courses.length 
+    : 0
 
-export const TeacherDashboard: React.FC<TeacherDashboardProps> = ({
-  teacherId,
-  className
-}) => {
-  const [activeTab, setActiveTab] = useState<'overview' | 'courses' | 'students' | 'analytics'>('overview');
-  const [selectedCourse, setSelectedCourse] = useState<TeacherCourse | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showCreateCourse, setShowCreateCourse] = useState(false);
+  const teacherMetrics = [
+    { 
+      title: "Total Students", 
+      value: totalStudents.toString(), 
+      subtitle: "Enrolled in my courses", 
+      color: "blue" as const, 
+      percentage: 78 
+    },
+    { 
+      title: "Active Courses", 
+      value: courses.length.toString(),
+      subtitle: "Courses I've created", 
+      color: "green" as const, 
+      percentage: 100 
+    },
+    { 
+      title: "Avg. Rating", 
+      value: averageRating > 0 ? averageRating.toFixed(1) : "N/A", 
+      subtitle: "Student ratings", 
+      color: "yellow" as const, 
+      percentage: averageRating > 0 ? Math.round((averageRating / 5) * 100) : 0 
+    },
+    { 
+      title: "Pending Reviews", 
+      value: "23", 
+      subtitle: "Assignments to grade", 
+      color: "red" as const, 
+      percentage: 45 
+    },
+    { 
+      title: "Response Rate", 
+      value: "95%", 
+      subtitle: "Within 24 hours", 
+      color: "cyan" as const, 
+      percentage: 95 
+    },
+  ]
 
-  const tabs = [
-    { id: 'overview', label: 'Overview', icon: BarChart3 },
-    { id: 'courses', label: 'My Courses', icon: BookOpen },
-    { id: 'students', label: 'Students', icon: Users },
-    { id: 'analytics', label: 'Analytics', icon: TrendingUp }
-  ];
+  const handleCreateCourse = () => {
+    setEditingCourse(null)
+    setModalTitle("Create New Course")
+    setModalSubmitLabel("Create Course")
+    setModalOpen(true)
+  }
 
-  const renderOverview = () => (
-    <div className="space-y-6">
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700 p-6"
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-lg flex items-center justify-center">
-              <BookOpen className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-white">{sampleTeacherCourses.length}</p>
-              <p className="text-sm text-slate-400">Active Courses</p>
-            </div>
-          </div>
-        </motion.div>
+  const handleEditCourse = (course: CourseResponse) => {
+    setEditingCourse(course)
+    setModalTitle("Edit Course")
+    setModalSubmitLabel("Update Course")
+    setModalOpen(true)
+  }
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700 p-6"
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gradient-to-r from-purple-500 to-pink-500 rounded-lg flex items-center justify-center">
-              <Users className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-white">
-                {sampleTeacherCourses.reduce((acc, course) => acc + course.enrollmentCount, 0)}
-              </p>
-              <p className="text-sm text-slate-400">Total Students</p>
-            </div>
-          </div>
-        </motion.div>
+  const handleCourseSubmit = async (courseData: any) => {
+    try {
+      if (editingCourse) {
+        // Update existing course
+        await updateCourse(editingCourse.id, {
+          title: courseData.title,
+          description: courseData.description,
+          difficulty: courseData.difficulty,
+          estimated_hours: courseData.estimatedHours,
+          color: courseData.color,
+          thumbnail: courseData.thumbnail,
+          tags: courseData.tags,
+        })
+      } else {
+        // Create new course
+        await createCourse({
+          title: courseData.title,
+          description: courseData.description,
+          difficulty: courseData.difficulty,
+          estimated_hours: courseData.estimatedHours,
+          color: courseData.color,
+          thumbnail: courseData.thumbnail,
+          tags: courseData.tags,
+        })
+      }
+      await fetchCourses() // Refresh the course list
+    } catch (error) {
+      console.error("Error saving course:", error)
+      throw error // Re-throw to let the modal handle the error
+    }
+  }
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700 p-6"
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gradient-to-r from-green-500 to-emerald-500 rounded-lg flex items-center justify-center">
-              <Star className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-white">
-                {(sampleTeacherCourses.reduce((acc, course) => acc + course.rating, 0) / sampleTeacherCourses.length).toFixed(1)}
-              </p>
-              <p className="text-sm text-slate-400">Avg Rating</p>
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3 }}
-          className="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700 p-6"
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-gradient-to-r from-yellow-500 to-orange-500 rounded-lg flex items-center justify-center">
-              <Award className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <p className="text-2xl font-bold text-white">89%</p>
-              <p className="text-sm text-slate-400">Completion Rate</p>
-            </div>
-          </div>
-        </motion.div>
-      </div>
-
-      {/* Recent Activity & Quick Actions */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <motion.div
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.4 }}
-          className="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700 p-6"
-        >
-          <h3 className="text-lg font-semibold text-white mb-4">Recent Activity</h3>
-          <div className="space-y-3">
-            {[
-              { action: 'New enrollment in "Web Development"', time: '2 hours ago', type: 'enrollment' },
-              { action: 'Quiz completed by Alex Johnson', time: '4 hours ago', type: 'completion' },
-              { action: 'Chapter updated in "React Patterns"', time: '1 day ago', type: 'update' },
-              { action: 'New student review (5 stars)', time: '2 days ago', type: 'review' }
-            ].map((activity, index) => (
-              <div key={index} className="flex items-center gap-3 p-3 bg-slate-700/30 rounded-lg">
-                <div className={cn(
-                  "w-2 h-2 rounded-full",
-                  activity.type === 'enrollment' && "bg-blue-400",
-                  activity.type === 'completion' && "bg-green-400",
-                  activity.type === 'update' && "bg-yellow-400",
-                  activity.type === 'review' && "bg-purple-400"
-                )} />
-                <div className="flex-1">
-                  <p className="text-sm text-white">{activity.action}</p>
-                  <p className="text-xs text-slate-400">{activity.time}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.5 }}
-          className="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700 p-6"
-        >
-          <h3 className="text-lg font-semibold text-white mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-2 gap-3">
-            <Button
-              variant="outline"
-              className="h-auto p-4 flex flex-col items-center gap-2"
-              onClick={() => setShowCreateCourse(true)}
-            >
-              <Plus className="w-5 h-5" />
-              <span className="text-xs">New Course</span>
-            </Button>
-            <Button
-              variant="outline"
-              className="h-auto p-4 flex flex-col items-center gap-2"
-            >
-              <Upload className="w-5 h-5" />
-              <span className="text-xs">Upload Content</span>
-            </Button>
-            <Button
-              variant="outline"
-              className="h-auto p-4 flex flex-col items-center gap-2"
-            >
-              <BarChart3 className="w-5 h-5" />
-              <span className="text-xs">View Analytics</span>
-            </Button>
-            <Button
-              variant="outline"
-              className="h-auto p-4 flex flex-col items-center gap-2"
-            >
-              <Settings className="w-5 h-5" />
-              <span className="text-xs">Settings</span>
-            </Button>
-          </div>
-        </motion.div>
-      </div>
-    </div>
-  );
-
-  const renderCourses = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">My Courses</h2>
-        <Button
-          variant="glow"
-          onClick={() => setShowCreateCourse(true)}
-        >
-          <Plus className="w-4 h-4 mr-2" />
-          Create Course
-        </Button>
-      </div>
-
-      {/* Search and Filters */}
-      <div className="flex gap-4">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-3 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search courses..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-slate-800/50 border border-slate-700 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        <Button variant="outline">
-          <Filter className="w-4 h-4 mr-2" />
-          Filter
-        </Button>
-      </div>
-
-      {/* Courses Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {sampleTeacherCourses.map((course, index) => (
-          <motion.div
-            key={course.id}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: index * 0.1 }}
-            className="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700 p-6 group hover:border-blue-500/50 transition-all duration-300"
-          >
-            <div className="aspect-video bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-lg mb-4 flex items-center justify-center">
-              <BookOpen className="w-8 h-8 text-blue-400" />
-            </div>
-
-            <h3 className="text-lg font-semibold text-white mb-2">{course.title}</h3>
-            <p className="text-sm text-slate-400 mb-4 line-clamp-2">{course.description}</p>
-
-            <div className="flex items-center gap-4 mb-4 text-sm text-slate-300">
-              <div className="flex items-center gap-1">
-                <Users className="w-4 h-4" />
-                <span>{course.enrollmentCount}</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Star className="w-4 h-4 text-yellow-400" />
-                <span>{course.rating}</span>
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <Button variant="outline" size="sm" className="flex-1">
-                <Eye className="w-4 h-4 mr-2" />
-                View
-              </Button>
-              <Button variant="outline" size="sm" className="flex-1">
-                <Edit3 className="w-4 h-4 mr-2" />
-                Edit
-              </Button>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-    </div>
-  );
-
-  const renderStudents = () => (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-white">Students</h2>
-        <div className="flex gap-2">
-          <Button variant="outline">
-            <Upload className="w-4 h-4 mr-2" />
-            Export
-          </Button>
-        </div>
-      </div>
-
-      {/* Students Table */}
-      <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-slate-700/50">
-              <tr>
-                <th className="text-left px-6 py-4 text-sm font-medium text-slate-300">Student</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-slate-300">Progress</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-slate-300">Last Active</th>
-                <th className="text-left px-6 py-4 text-sm font-medium text-slate-300">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sampleStudents.map((student, index) => (
-                <motion.tr
-                  key={student.id}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.1 }}
-                  className="border-t border-slate-700/50 hover:bg-slate-700/20"
-                >
-                  <td className="px-6 py-4">
-                    <div>
-                      <p className="text-white font-medium">{student.name}</p>
-                      <p className="text-sm text-slate-400">{student.email}</p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 bg-slate-700 rounded-full h-2">
-                        <div
-                          className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full"
-                          style={{ width: `${student.progress}%` }}
-                        />
-                      </div>
-                      <span className="text-sm text-white">{student.progress}%</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-slate-400">{student.lastActive}</td>
-                  <td className="px-6 py-4">
-                    <Button variant="outline" size="sm">
-                      View Details
-                    </Button>
-                  </td>
-                </motion.tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-
-  const renderAnalytics = () => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-white">Analytics</h2>
-      
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700 p-6"
-        >
-          <h3 className="text-lg font-semibold text-white mb-4">Enrollment Trends</h3>
-          <div className="h-64 flex items-center justify-center text-slate-400">
-            <div className="text-center">
-              <BarChart3 className="w-12 h-12 mx-auto mb-2" />
-              <p>Chart visualization would go here</p>
-            </div>
-          </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700 p-6"
-        >
-          <h3 className="text-lg font-semibold text-white mb-4">Completion Rates</h3>
-          <div className="h-64 flex items-center justify-center text-slate-400">
-            <div className="text-center">
-              <Target className="w-12 h-12 mx-auto mb-2" />
-              <p>Progress tracking visualization</p>
-            </div>
-          </div>
-        </motion.div>
-      </div>
-    </div>
-  );
-
+  const handleCloseModal = () => {
+    setModalOpen(false)
+    setEditingCourse(null)
+  }
   return (
-    <div className={cn("min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900", className)}>
-      <div className="container mx-auto px-6 py-8">
-        {/* Header */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8"
-        >
-          <h1 className="text-4xl font-bold text-white mb-2">Teacher Dashboard</h1>
-          <p className="text-slate-400">Manage your courses and track student progress</p>
-        </motion.div>
-
-        {/* Navigation Tabs */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="mb-8"
-        >
-          <div className="flex gap-2 p-1 bg-slate-800/50 backdrop-blur-sm rounded-xl border border-slate-700">
-            {tabs.map((tab) => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as any)}
-                  className={cn(
-                    "flex items-center gap-2 px-6 py-3 rounded-lg font-medium transition-all duration-200",
-                    activeTab === tab.id
-                      ? "bg-blue-500 text-white shadow-lg"
-                      : "text-slate-400 hover:text-white hover:bg-slate-700/50"
-                  )}
-                >
-                  <Icon className="w-4 h-4" />
-                  {tab.label}
-                </button>
-              );
-            })}
+    <div className="min-h-screen bg-background">
+      <main className="p-6">
+        {/* Insights Banner */}
+        <div className="bg-accent text-accent-foreground px-6 py-4 rounded-lg mb-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Users className="w-6 h-6" />
+            <h2 className="font-bold text-lg">Teaching Dashboard</h2>
           </div>
-        </motion.div>
+          <span className="text-sm font-medium">Academic Year 2025</span>
+        </div>
 
-        {/* Tab Content */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={activeTab}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.2 }}
-          >
-            {activeTab === 'overview' && renderOverview()}
-            {activeTab === 'courses' && renderCourses()}
-            {activeTab === 'students' && renderStudents()}
-            {activeTab === 'analytics' && renderAnalytics()}
-          </motion.div>
-        </AnimatePresence>
-      </div>
+        {/* Metrics Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
+          {teacherMetrics.map((metric, index) => (
+            <MetricCard key={index} {...metric} />
+          ))}
+        </div>
+
+        {/* Course Statistics */}
+        <div className="bg-card rounded-lg p-6 shadow-sm mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-semibold text-foreground flex items-center gap-2">
+              <BookOpen className="w-5 h-5 text-accent" />
+              My Courses
+            </h3>
+            <Button size="sm" variant="accent" onClick={handleCreateCourse}>
+              <Plus className="w-4 h-4 mr-2" />
+              Create New Course
+            </Button>
+          </div>
+          {loading ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground">Loading courses...</p>
+            </div>
+          ) : courses.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-muted-foreground mb-4">No courses created yet</p>
+              <Button onClick={handleCreateCourse} variant="accent">
+                <Plus className="w-4 h-4 mr-2" />
+                Create Your First Course
+              </Button>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Course Title</TableHead>
+                  <TableHead>Difficulty</TableHead>
+                  <TableHead>Students</TableHead>
+                  <TableHead>Rating</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {courses.map((course) => (
+                  <TableRow key={course.id} className="cursor-pointer hover:bg-muted/50">
+                    <TableCell className="font-medium">{course.title}</TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        course.difficulty === 'beginner' ? 'bg-green-100 text-green-800' :
+                        course.difficulty === 'intermediate' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {course.difficulty}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Users className="w-4 h-4 text-muted-foreground" />
+                        <span>{course.enrollment_count}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {course.rating ? (
+                        <div className="flex items-center gap-1">
+                          <span className="font-medium">{course.rating.toFixed(1)}</span>
+                          <span className="text-yellow-500">★</span>
+                        </div>
+                      ) : (
+                        <span className="text-muted-foreground">No ratings</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleEditCourse(course)}
+                        className="flex items-center gap-1"
+                      >
+                        <Edit className="w-4 h-4" />
+                        Edit
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </div>
+
+        {/* Two Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+          {/* Recent Submissions */}
+          <div className="bg-card rounded-lg p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-foreground flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-accent" />
+                Recent Submissions
+              </h3>
+              <Button size="sm" variant="ghost">
+                View All
+              </Button>
+            </div>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Student</TableHead>
+                  <TableHead>Assignment</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {recentSubmissions.map((submission) => (
+                  <TableRow key={submission.id}>
+                    <TableCell>
+                      <div>
+                        <p className="font-medium">{submission.student}</p>
+                        <p className="text-xs text-muted-foreground">{submission.submittedAt}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <p className="text-sm font-medium">{submission.assignment}</p>
+                        <p className="text-xs text-muted-foreground">{submission.course}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {submission.status === 'pending' ? (
+                        <Button size="sm" variant="accent">
+                          Grade Now
+                        </Button>
+                      ) : (
+                        <span className="text-xs font-medium px-2 py-1 rounded-full bg-metric-green/10 text-metric-green">
+                          Graded
+                        </span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          {/* Student Activity Highlights */}
+          <div className="bg-card rounded-lg p-6 shadow-sm">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-semibold text-foreground flex items-center gap-2">
+                <MessageSquare className="w-5 h-5 text-accent" />
+                Student Highlights
+              </h3>
+            </div>
+            <div className="space-y-4">
+              {studentActivity.map((activity, index) => (
+                <div 
+                  key={index}
+                  className="flex items-start justify-between p-4 bg-accent/5 rounded-lg border border-accent/20"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-muted-foreground mb-1">
+                      {activity.name}
+                    </p>
+                    <p className="font-medium">{activity.value}</p>
+                  </div>
+                  <span className="text-xs bg-accent text-accent-foreground px-2 py-1 rounded-full">
+                    {activity.count}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            {/* Quick Actions */}
+            <div className="mt-6 space-y-2">
+              <Button className="w-full" variant="accent">
+                Send Announcement
+              </Button>
+              <Button className="w-full" variant="outline">
+                Schedule Office Hours
+              </Button>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      {/* Course Modal */}
+      <CourseModal
+        isOpen={modalOpen}
+        onClose={handleCloseModal}
+        onSubmit={handleCourseSubmit}
+        initialData={editingCourse ? {
+          title: editingCourse.title,
+          description: editingCourse.description,
+          difficulty: editingCourse.difficulty,
+          estimated_hours: editingCourse.estimated_hours,
+          color: editingCourse.color,
+          thumbnail: editingCourse.thumbnail,
+          tags: editingCourse.tags,
+        } : undefined}
+        title={modalTitle}
+        submitLabel={modalSubmitLabel}
+      />
     </div>
-  );
-};
+  )
+}
