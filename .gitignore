@@ -42,4 +42,5 @@ next-env.d.ts
 __pycache__/
 *.pyc
 *.pyo
+db.sqlite3
 
