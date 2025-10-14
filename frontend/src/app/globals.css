@@ -1,0 +1,138 @@
+@import "tailwindcss";
+
+@theme {
+  /* Color System - Questify Design */
+  --color-primary: #1a2332; /* Deep navy for sidebar and headers */
+  --color-primary-foreground: #f1f5f9;
+
+  --color-accent: #fdd835; /* Vibrant yellow/gold for highlights and CTAs */
+  --color-accent-foreground: #1a2332;
+
+  --color-background: #f5f5f5; /* Light gray for main content area */
+  --color-foreground: #1a2332;
+
+  --color-card: #ffffff; /* Clean white cards */
+  --color-card-foreground: #1a2332;
+
+  --color-muted: #e0e0e0;
+  --color-muted-foreground: #64748b;
+
+  --color-border: #e2e8f0;
+  --color-input: #e2e8f0;
+  --color-ring: #fdd835;
+
+  /* Metric Colors for Gauges */
+  --color-metric-red: #ef4444;
+  --color-metric-green: #10b981;
+  --color-metric-blue: #3b82f6;
+  --color-metric-purple: #a855f7;
+  --color-metric-yellow: #fbbf24;
+  --color-metric-cyan: #06b6d4;
+
+  /* Sidebar specific colors */
+  --color-sidebar-background: #1a2332;
+  --color-sidebar-foreground: #f1f5f9;
+  --color-sidebar-primary: #fdd835;
+  --color-sidebar-primary-foreground: #1a2332;
+  --color-sidebar-accent: #fdd835;
+  --color-sidebar-accent-foreground: #1a2332;
+  --color-sidebar-border: #2d3748;
+
+  /* Secondary colors */
+  --color-secondary: #64748b;
+  --color-secondary-foreground: #f1f5f9;
+
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+
+  /* Chart colors */
+  --color-chart-1: #ef4444;
+  --color-chart-2: #10b981;
+  --color-chart-3: #3b82f6;
+  --color-chart-4: #a855f7;
+  --color-chart-5: #fbbf24;
+
+  /* Border radius */
+  --radius: 0.5rem;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+  @theme {
+    --color-background: #0f172a;
+    --color-foreground: #f1f5f9;
+    --color-card: #1e293b;
+    --color-card-foreground: #f1f5f9;
+    --color-muted: #334155;
+    --color-muted-foreground: #94a3b8;
+    --color-border: #334155;
+    --color-input: #334155;
+  }
+}
+
+/* Hide scrollbars for timeline scrolling */
+.scrollbar-hide {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+body {
+  background: var(--color-background);
+  color: var(--color-foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Animation utilities */
+@keyframes accordion-down {
+  from {
+    height: 0;
+  }
+  to {
+    height: var(--radix-accordion-content-height);
+  }
+}
+
+@keyframes accordion-up {
+  from {
+    height: var(--radix-accordion-content-height);
+  }
+  to {
+    height: 0;
+  }
+}
+
+.animate-accordion-down {
+  animation: accordion-down 0.2s ease-out;
+}
+
+.animate-accordion-up {
+  animation: accordion-up 0.2s ease-out;
+}
+
+::-webkit-scrollbar {
+  background: transparent !important;
+  color: transparent !important;
+}
+
+::-webkit-scrollbar-thumb {
+  background: transparent !important;
+  color: transparent !important;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: transparent !important;
+  color: transparent !important;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent !important;
+  color: transparent !important;
+}
+::-webkit-scrollbar-track:hover {
+  background: transparent !important;
+  color: transparent !important;
+}

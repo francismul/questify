@@ -1,0 +1,32 @@
+{
+  "common": {
+    "dashboard": "Dashboard",
+    "logout": "Abmelden",
+    "language": "Sprache",
+    "english": "Englisch",
+    "spanish": "Spanisch",
+    "french": "Französisch",
+    "german": "Deutsch",
+    "notifications": "Benachrichtigungen",
+    "profile": "Profil",
+    "settings": "Einstellungen",
+    "courses": "Kurse",
+    "reports": "Berichte",
+    "messages": "Nachrichten",
+    "achievements": "Erfolge",
+    "goals": "Ziele",
+    "students": "Studenten",
+    "analytics": "Analysen",
+    "campaigns": "Kampagnen",
+    "myProfile": "Mein Profil",
+    "myCourses": "Meine Kurse",
+    "loggingOut": "Abmelden...",
+    "guestUser": "Gastbenutzer",
+    "student": "Student",
+    "teacher": "Lehrer"
+  },
+  "navigation": {
+    "home": "Startseite",
+    "dashboard": "Dashboard"
+  }
+}
