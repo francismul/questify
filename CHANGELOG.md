@@ -29,6 +29,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ---
 
+## [0.1.1] - 2025-12-15
+
+### Added
+
+#### Frontend Scaffolding
+- **Guardian Portal**: Created dashboard, task management, submission review, analytics, and family settings pages
+- **Learner Portal**: Created dashboard, task list, submission interface, and profile pages
+- **Superuser Portal**: Created dashboard, user management, and system logs pages
+- **Authentication**: Added Sign In and Callback page placeholders
+- **Route Structure**: Implemented Next.js App Router folders for split-role routing
+
+### Changed
+- Refined project task list to reflect frontend implementation progress
+
+---
+
 ## [0.1.0] – 2025-12-15
 
 ### Added
