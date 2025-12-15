@@ -1,0 +1,145 @@
+{
+  "realm": "questify-realm",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  
+  "roles": {
+    "realm": [
+      {
+        "name": "guardian",
+        "description": "Guardian role with task management permissions"
+      },
+      {
+        "name": "learner",
+        "description": "Learner role with task completion permissions"
+      },
+      {
+        "name": "superuser",
+        "description": "Administrator role with full system access"
+      },
+      {
+        "name": "system",
+        "description": "System service account role"
+      }
+    ]
+  },
+  
+  "clients": [
+    {
+      "clientId": "questify-backend",
+      "name": "Questify Backend Service",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "questify-backend-secret-change-in-production",
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "publicClient": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "access.token.lifespan": "3600"
+      }
+    },
+    {
+      "clientId": "questify-frontend",
+      "name": "Questify Frontend Application",
+      "enabled": true,
+      "publicClient": true,
+      "bearerOnly": false,
+      "consentRequired": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "protocol": "openid-connect",
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "https://questify.app/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "https://questify.app"
+      ],
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
+    }
+  ],
+  
+  "users": [
+    {
+      "username": "guardian@demo.com",
+      "email": "guardian@demo.com",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Demo",
+      "lastName": "Guardian",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "guardian123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["guardian"],
+      "attributes": {
+        "familyId": ["00000000-0000-0000-0000-000000000001"]
+      }
+    },
+    {
+      "username": "learner@demo.com",
+      "email": "learner@demo.com",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Demo",
+      "lastName": "Learner",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "learner123",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["learner"],
+      "attributes": {
+        "familyId": ["00000000-0000-0000-0000-000000000001"]
+      }
+    }
+  ],
+  
+  "clientScopes": [
+    {
+      "name": "family",
+      "description": "Family ID scope",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "true"
+      },
+      "protocolMappers": [
+        {
+          "name": "family-id",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "user.attribute": "familyId",
+            "claim.name": "family_id",
+            "jsonType.label": "String",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "userinfo.token.claim": "true"
+          }
+        }
+      ]
+    }
+  ]
+}
