@@ -1,14 +1,13 @@
-# Frontend
+# Backend
 node_modules/
-.next/
-out/
-build/
+dist/
 *.log
-
-# Environment
+logs/
 .env
 .env.local
-.env.production.local
+
+# Test coverage
+coverage/
 
 # IDE
 .vscode/
